@@ -14,7 +14,7 @@ class AuthService {
         nombre: 'Investigador Prueba',
         email: email,
         rol: UserRole.investigador,
-        estado: AccountStatus.active,
+        estado: AccountStatus.activo,
       );
     }
 
@@ -24,7 +24,7 @@ class AuthService {
         nombre: 'Evaluador Prueba',
         email: email,
         rol: UserRole.evaluador,
-        estado: AccountStatus.active,
+        estado: AccountStatus.activo,
       );
     }
 
@@ -34,7 +34,7 @@ class AuthService {
         nombre: 'Coordinador Prueba',
         email: email,
         rol: UserRole.coordinador,
-        estado: AccountStatus.active,
+        estado: AccountStatus.activo,
       );
     }
 
@@ -44,7 +44,7 @@ class AuthService {
         nombre: 'Usuario Bloqueado',
         email: email,
         rol: UserRole.investigador,
-        estado: AccountStatus.blocked,
+        estado: AccountStatus.bloqueado,
       );
     }
 
@@ -54,7 +54,7 @@ class AuthService {
         nombre: 'Usuario Pendiente',
         email: email,
         rol: UserRole.investigador,
-        estado: AccountStatus.pendingApproval,
+        estado: AccountStatus.pendienteAprobacion,
       );
     }
 
