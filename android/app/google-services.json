@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "235555889574",
+    "project_id": "gestion-proyectos-invest",
+    "storage_bucket": "gestion-proyectos-invest.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:235555889574:android:f700480646ab8e9cd2af67",
+        "android_client_info": {
+          "package_name": "com.example.proyecto_final_movil"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyByEg14QaXAyFz_ZB0eV6FGa5N3viYMs58"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
