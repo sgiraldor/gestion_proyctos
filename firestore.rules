@@ -1,0 +1,77 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function currentProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function activeUser() {
+      return signedIn() &&
+        (
+          currentProfile().data.status == 'active' ||
+          currentProfile().data.estado == 'active'
+        );
+    }
+
+    function hasRole(role) {
+      return activeUser() &&
+        (
+          currentProfile().data.role == role ||
+          currentProfile().data.rol == role
+        );
+    }
+
+    match /users/{uid} {
+      allow read, write: if true;
+    }
+
+    match /proyectos/{id} {
+      allow read: if activeUser();
+      allow create: if hasRole('investigador');
+      allow update: if hasRole('investigador') ||
+        hasRole('coordinador') ||
+        (
+          hasRole('evaluador') &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'estado',
+            'porcentajeAvance'
+          ])
+        );
+    }
+
+    match /integrantes/{id} {
+      allow read: if activeUser();
+      allow create, update: if hasRole('investigador') || hasRole('coordinador');
+    }
+
+    match /entregables/{id} {
+      allow read: if activeUser();
+      allow create: if hasRole('investigador') || hasRole('coordinador');
+      allow update: if hasRole('investigador') ||
+        hasRole('coordinador') ||
+        (
+          hasRole('evaluador') &&
+          resource.data.fechaEntrega != null &&
+          request.resource.data.aprobado == true &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'aprobado',
+            'syncStatus'
+          ])
+        );
+    }
+
+    match /avances/{id} {
+      allow read: if activeUser();
+      allow create, update: if hasRole('investigador') || hasRole('coordinador');
+    }
+
+    match /revisiones/{id} {
+      allow read, write: if true;
+    }
+  }
+}

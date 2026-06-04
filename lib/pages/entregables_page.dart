@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
 
-import '../models/proyecto.dart';
+import '../enums/user_role.dart';
 import '../models/entregable.dart';
+import '../models/proyecto.dart';
+import '../models/usuario.dart';
+import '../services/firestore_service.dart';
 import '../services/proyecto_service.dart';
+import '../utils/app_theme.dart';
+import '../validators/entregable_validator.dart';
 
 class EntregablesPage extends StatefulWidget {
   final Proyecto proyecto;
+  final Usuario usuario;
 
   const EntregablesPage({
     super.key,
     required this.proyecto,
+    required this.usuario,
   });
 
   @override
@@ -17,48 +24,76 @@ class EntregablesPage extends StatefulWidget {
 }
 
 class _EntregablesPageState extends State<EntregablesPage> {
-  final List<Entregable> entregables = [];
-  final ProyectoService proyectoService = ProyectoService();
+  final _proyectoService = ProyectoService();
+  final _firestoreService = FirestoreService();
 
-  void mostrarFormularioEntregable() {
+  bool get _puedeCrearOEnviar {
+    return widget.usuario.rol == UserRole.investigador ||
+        widget.usuario.rol == UserRole.coordinador;
+  }
+
+  bool get _puedeAprobar {
+    return widget.usuario.rol == UserRole.evaluador ||
+        widget.usuario.rol == UserRole.coordinador;
+  }
+
+  Future<void> _actualizarAvanceProyecto() async {
+    final entregables = await _firestoreService.cargarEntregables(
+      widget.proyecto.id,
+    );
+    final avance = _proyectoService.calcularPorcentajeAvance(entregables);
+    await _firestoreService.actualizarAvanceProyecto(
+      widget.proyecto.id,
+      avance,
+    );
+  }
+
+  void _mostrarFormularioEntregable() {
     final nombreController = TextEditingController();
     final descripcionController = TextEditingController();
     final diasController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text('Nuevo entregable'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nombreController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nombre',
-                    border: OutlineInputBorder(),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: nombreController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nombre',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: EntregableValidator.validarNombre,
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: descripcionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Descripción',
-                    border: OutlineInputBorder(),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: descripcionController,
+                    decoration: const InputDecoration(
+                      labelText: 'Descripcion',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: EntregableValidator.validarDescripcion,
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: diasController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Días para la fecha límite',
-                    border: OutlineInputBorder(),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: diasController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Dias para la fecha limite',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: EntregableValidator.validarDiasLimite,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           actions: [
@@ -67,35 +102,26 @@ class _EntregablesPageState extends State<EntregablesPage> {
               child: const Text('Cancelar'),
             ),
             ElevatedButton(
-              onPressed: () {
-                final nombre = nombreController.text.trim();
-                final descripcion = descripcionController.text.trim();
-                final dias = int.tryParse(diasController.text.trim());
-
-                if (nombre.isEmpty || descripcion.isEmpty || dias == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Todos los campos son obligatorios'),
-                    ),
-                  );
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) {
                   return;
                 }
-
-                setState(() {
-                  entregables.add(
-                    Entregable(
-                      id: 'E${entregables.length + 1}',
-                      proyectoId: widget.proyecto.id,
-                      nombre: nombre,
-                      descripcion: descripcion,
-                      fechaLimite: DateTime.now().add(Duration(days: dias)),
-                      aprobado: false,
-                      tardio: false,
-                    ),
-                  );
-                });
-
-                Navigator.pop(context);
+                final dias = int.parse(diasController.text.trim());
+                await _firestoreService.guardarEntregable(
+                  Entregable(
+                    id: '',
+                    proyectoId: widget.proyecto.id,
+                    nombre: nombreController.text.trim(),
+                    descripcion: descripcionController.text.trim(),
+                    fechaLimite: DateTime.now().add(Duration(days: dias)),
+                    aprobado: false,
+                    tardio: false,
+                  ),
+                );
+                await _actualizarAvanceProyecto();
+                if (context.mounted) {
+                  Navigator.pop(context);
+                }
               },
               child: const Text('Guardar'),
             ),
@@ -105,59 +131,36 @@ class _EntregablesPageState extends State<EntregablesPage> {
     );
   }
 
-  void enviarEntregable(int index) {
-    final entregable = entregables[index];
+  Future<void> _enviarEntregable(Entregable entregable) async {
     final fechaEntrega = DateTime.now();
-
-    final esTardio = proyectoService.entregableEsTardio(
+    final esTardio = _proyectoService.entregableEsTardio(
       fechaLimite: entregable.fechaLimite,
       fechaEntrega: fechaEntrega,
     );
-
-    setState(() {
-      entregables[index] = Entregable(
-        id: entregable.id,
-        proyectoId: entregable.proyectoId,
-        nombre: entregable.nombre,
-        descripcion: entregable.descripcion,
-        fechaLimite: entregable.fechaLimite,
+    await _firestoreService.guardarEntregable(
+      entregable.copyWith(
         fechaEntrega: fechaEntrega,
-        aprobado: entregable.aprobado,
         tardio: esTardio,
-      );
-    });
+      ),
+    );
+    await _actualizarAvanceProyecto();
   }
 
-  void aprobarEntregable(int index) {
-    final entregable = entregables[index];
-
+  Future<void> _aprobarEntregable(Entregable entregable) async {
     if (entregable.fechaEntrega == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Primero debes enviar el entregable'),
-        ),
+        const SnackBar(content: Text('Primero debes enviar el entregable')),
       );
       return;
     }
-
-    setState(() {
-      entregables[index] = Entregable(
-        id: entregable.id,
-        proyectoId: entregable.proyectoId,
-        nombre: entregable.nombre,
-        descripcion: entregable.descripcion,
-        fechaLimite: entregable.fechaLimite,
-        fechaEntrega: entregable.fechaEntrega,
-        aprobado: true,
-        tardio: entregable.tardio,
-      );
-    });
+    await _firestoreService.guardarEntregable(
+      entregable.copyWith(aprobado: true),
+    );
+    await _actualizarAvanceProyecto();
   }
 
-  void reemplazarEntregable(int index) {
-    final entregable = entregables[index];
-
-    if (!proyectoService.puedeReemplazarEntregable(entregable)) {
+  void _reemplazarEntregable(Entregable entregable) {
+    if (!_proyectoService.puedeReemplazarEntregable(entregable)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Un entregable aprobado no puede reemplazarse'),
@@ -179,7 +182,7 @@ class _EntregablesPageState extends State<EntregablesPage> {
             controller: nuevaDescripcionController,
             maxLines: 3,
             decoration: const InputDecoration(
-              labelText: 'Nueva descripción',
+              labelText: 'Nueva descripcion',
               border: OutlineInputBorder(),
             ),
           ),
@@ -189,33 +192,30 @@ class _EntregablesPageState extends State<EntregablesPage> {
               child: const Text('Cancelar'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 final nuevaDescripcion =
                     nuevaDescripcionController.text.trim();
-
                 if (nuevaDescripcion.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('La descripción no puede estar vacía'),
+                      content: Text('La descripcion no puede estar vacia'),
                     ),
                   );
                   return;
                 }
 
-                setState(() {
-                  entregables[index] = Entregable(
-                    id: entregable.id,
-                    proyectoId: entregable.proyectoId,
-                    nombre: entregable.nombre,
+                await _firestoreService.guardarEntregable(
+                  entregable.copyWith(
                     descripcion: nuevaDescripcion,
-                    fechaLimite: entregable.fechaLimite,
-                    fechaEntrega: null,
+                    clearFechaEntrega: true,
                     aprobado: false,
                     tardio: false,
-                  );
-                });
-
-                Navigator.pop(context);
+                  ),
+                );
+                await _actualizarAvanceProyecto();
+                if (context.mounted) {
+                  Navigator.pop(context);
+                }
               },
               child: const Text('Guardar'),
             ),
@@ -225,106 +225,150 @@ class _EntregablesPageState extends State<EntregablesPage> {
     );
   }
 
-  double calcularAvance() {
-    return proyectoService.calcularPorcentajeAvance(entregables);
-  }
-
-  String formatearFecha(DateTime fecha) {
+  String _formatearFecha(DateTime fecha) {
     return '${fecha.day}/${fecha.month}/${fecha.year}';
   }
 
   @override
   Widget build(BuildContext context) {
-    final avance = calcularAvance();
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6FA),
       appBar: AppBar(
         title: const Text('Entregables'),
-        centerTitle: true,
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: mostrarFormularioEntregable,
-        child: const Icon(Icons.add),
-      ),
-      body: Column(
-        children: [
-          Card(
-            margin: const EdgeInsets.all(16),
-            child: ListTile(
-              leading: const Icon(Icons.percent),
-              title: const Text('Porcentaje de avance calculado'),
-              subtitle: Text('${avance.toStringAsFixed(0)}%'),
-            ),
-          ),
-          Expanded(
-            child: entregables.isEmpty
-                ? const Center(
-                    child: Text('No hay entregables registrados'),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: entregables.length,
-                    itemBuilder: (context, index) {
-                      final entregable = entregables[index];
+      floatingActionButton: _puedeCrearOEnviar
+          ? FloatingActionButton(
+              onPressed: _mostrarFormularioEntregable,
+              child: const Icon(Icons.add),
+            )
+          : null,
+      body: StreamBuilder<List<Entregable>>(
+        stream: _firestoreService.entregablesStream(widget.proyecto.id),
+        builder: (context, snapshot) {
+          final entregables = snapshot.data ?? [];
+          final avance = _proyectoService.calcularPorcentajeAvance(entregables);
 
-                      return Card(
-                        child: ListTile(
-                          leading: Icon(
-                            entregable.aprobado
-                                ? Icons.check_circle
-                                : Icons.assignment,
-                            color: entregable.aprobado
-                                ? Colors.green
-                                : Colors.indigo,
-                          ),
-                          title: Text(entregable.nombre),
-                          subtitle: Text(
-                            '${entregable.descripcion}\n'
-                            'Límite: ${formatearFecha(entregable.fechaLimite)}\n'
-                            'Estado: ${entregable.fechaEntrega == null ? 'Pendiente' : 'Enviado'}'
-                            '${entregable.aprobado ? ' - Aprobado' : ''}'
-                            '${entregable.tardio ? ' - Tardío' : ''}',
-                          ),
-                          isThreeLine: true,
-                          trailing: PopupMenuButton<String>(
-                            onSelected: (value) {
-                              if (value == 'enviar') {
-                                enviarEntregable(index);
-                              }
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-                              if (value == 'aprobar') {
-                                aprobarEntregable(index);
-                              }
-
-                              if (value == 'reemplazar') {
-                                reemplazarEntregable(index);
-                              }
-                            },
-                            itemBuilder: (context) => [
-                              if (entregable.fechaEntrega == null)
-                                const PopupMenuItem(
-                                  value: 'enviar',
-                                  child: Text('Enviar'),
-                                ),
-                              if (entregable.fechaEntrega != null &&
-                                  !entregable.aprobado)
-                                const PopupMenuItem(
-                                  value: 'aprobar',
-                                  child: Text('Aprobar'),
-                                ),
-                              const PopupMenuItem(
-                                value: 'reemplazar',
-                                child: Text('Reemplazar'),
-                              ),
-                            ],
-                          ),
+          return Column(
+            children: [
+              Card(
+                margin: const EdgeInsets.all(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Porcentaje de avance calculado',
+                        style: TextStyle(
+                          color: AppTheme.ink,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
                         ),
-                      );
-                    },
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: LinearProgressIndicator(
+                                value:
+                                    (avance / 100).clamp(0.0, 1.0).toDouble(),
+                                minHeight: 8,
+                                backgroundColor: AppTheme.separator,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            '${avance.toStringAsFixed(0)}%',
+                            style: const TextStyle(
+                              color: AppTheme.ink,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-          ),
-        ],
+                ),
+              ),
+              Expanded(
+                child: entregables.isEmpty
+                    ? const Center(
+                        child: Text('No hay entregables registrados'),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                        itemCount: entregables.length,
+                        itemBuilder: (context, index) {
+                          final entregable = entregables[index];
+
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: ListTile(
+                              leading: Icon(
+                                entregable.aprobado
+                                    ? Icons.check_circle_outline
+                                    : Icons.assignment_outlined,
+                                color: entregable.aprobado
+                                    ? AppTheme.success
+                                    : AppTheme.primary,
+                              ),
+                              title: Text(entregable.nombre),
+                              subtitle: Text(
+                                '${entregable.descripcion}\n'
+                                'Limite: ${_formatearFecha(entregable.fechaLimite)}\n'
+                                'Estado: ${entregable.fechaEntrega == null ? 'Pendiente' : 'Enviado'}'
+                                '${entregable.aprobado ? ' - Aprobado' : ''}'
+                                '${entregable.tardio ? ' - Tardio' : ''}',
+                              ),
+                              isThreeLine: true,
+                              trailing: PopupMenuButton<String>(
+                                onSelected: (value) {
+                                  if (value == 'enviar') {
+                                    _enviarEntregable(entregable);
+                                  }
+                                  if (value == 'aprobar') {
+                                    _aprobarEntregable(entregable);
+                                  }
+                                  if (value == 'reemplazar') {
+                                    _reemplazarEntregable(entregable);
+                                  }
+                                },
+                                itemBuilder: (context) => [
+                                  if (_puedeCrearOEnviar &&
+                                      entregable.fechaEntrega == null)
+                                    const PopupMenuItem(
+                                      value: 'enviar',
+                                      child: Text('Enviar'),
+                                    ),
+                                  if (_puedeAprobar &&
+                                      entregable.fechaEntrega != null &&
+                                      !entregable.aprobado)
+                                    const PopupMenuItem(
+                                      value: 'aprobar',
+                                      child: Text('Aprobar'),
+                                    ),
+                                  if (_puedeCrearOEnviar)
+                                    const PopupMenuItem(
+                                      value: 'reemplazar',
+                                      child: Text('Reemplazar'),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

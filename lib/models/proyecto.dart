@@ -37,18 +37,56 @@ class Proyecto {
 
   factory Proyecto.fromJson(Map<String, dynamic> json) {
     return Proyecto(
-      id: json['id'],
-      titulo: json['titulo'],
-      descripcion: json['descripcion'],
-      responsableId: json['responsableId'],
-      fechaCreacion: DateTime.parse(json['fechaCreacion']),
+      id: json['id'] as String? ?? '',
+      titulo: json['titulo'] as String? ?? '',
+      descripcion: json['descripcion'] as String? ?? '',
+      responsableId: json['responsableId'] as String? ?? '',
+      fechaCreacion: _dateFromJson(json['fechaCreacion']) ?? DateTime.now(),
       estado: ProjectStatus.values.firstWhere(
         (e) => e.name == json['estado'],
+        orElse: () => ProjectStatus.borrador,
       ),
-      porcentajeAvance: (json['porcentajeAvance'] as num).toDouble(),
+      porcentajeAvance: (json['porcentajeAvance'] as num? ?? 0).toDouble(),
       syncStatus: SyncStatus.values.firstWhere(
         (e) => e.name == json['syncStatus'],
+        orElse: () => SyncStatus.pendingSync,
       ),
     );
+  }
+
+  Proyecto copyWith({
+    String? id,
+    String? titulo,
+    String? descripcion,
+    String? responsableId,
+    DateTime? fechaCreacion,
+    ProjectStatus? estado,
+    double? porcentajeAvance,
+    SyncStatus? syncStatus,
+  }) {
+    return Proyecto(
+      id: id ?? this.id,
+      titulo: titulo ?? this.titulo,
+      descripcion: descripcion ?? this.descripcion,
+      responsableId: responsableId ?? this.responsableId,
+      fechaCreacion: fechaCreacion ?? this.fechaCreacion,
+      estado: estado ?? this.estado,
+      porcentajeAvance: porcentajeAvance ?? this.porcentajeAvance,
+      syncStatus: syncStatus ?? this.syncStatus,
+    );
+  }
+
+  static DateTime? _dateFromJson(dynamic value) {
+    if (value is DateTime) {
+      return value;
+    }
+    if (value is String) {
+      return DateTime.tryParse(value);
+    }
+    try {
+      return value?.toDate() as DateTime?;
+    } catch (_) {
+      return null;
+    }
   }
 }

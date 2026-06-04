@@ -1,1 +1,28 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"gestion-proyectos-invest","appId":"1:235555889574:android:f700480646ab8e9cd2af67","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"gestion-proyectos-invest","configurations":{"android":"1:235555889574:android:f700480646ab8e9cd2af67","ios":"1:235555889574:ios:9bd08d16bfb0bf63d2af67","macos":"1:235555889574:ios:9bd08d16bfb0bf63d2af67","web":"1:235555889574:web:10aca528e7ed7a62d2af67","windows":"1:235555889574:web:6dfe0d7c63adc582d2af67"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "gestion-proyectos-invest",
+          "appId": "1:235555889574:android:f700480646ab8e9cd2af67",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "gestion-proyectos-invest",
+          "configurations": {
+            "android": "1:235555889574:android:f700480646ab8e9cd2af67",
+            "ios": "1:235555889574:ios:9bd08d16bfb0bf63d2af67",
+            "macos": "1:235555889574:ios:9bd08d16bfb0bf63d2af67",
+            "web": "1:235555889574:web:10aca528e7ed7a62d2af67",
+            "windows": "1:235555889574:web:6dfe0d7c63adc582d2af67"
+          }
+        }
+      }
+    }
+  }
+}
