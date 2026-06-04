@@ -32,6 +32,7 @@ class AuthService {
       throw const AuthException('No se pudo iniciar sesion');
     }
 
+<<<<<<< HEAD
     final usuario = await cargarPerfil(user.uid);
     if (usuario == null) {
       final now = DateTime.now();
@@ -43,6 +44,55 @@ class AuthService {
         estado: AccountStatus.pendingApproval,
         createdAt: now,
         lastLoginAt: now,
+=======
+    if (email == 'investigador@test.com') {
+      return Usuario(
+        uid: 'u1',
+        nombre: 'Investigador Prueba',
+        email: email,
+        rol: UserRole.investigador,
+        estado: AccountStatus.activo,
+      );
+    }
+
+    if (email == 'evaluador@test.com') {
+      return Usuario(
+        uid: 'u2',
+        nombre: 'Evaluador Prueba',
+        email: email,
+        rol: UserRole.evaluador,
+        estado: AccountStatus.activo,
+      );
+    }
+
+    if (email == 'coordinador@test.com') {
+      return Usuario(
+        uid: 'u3',
+        nombre: 'Coordinador Prueba',
+        email: email,
+        rol: UserRole.coordinador,
+        estado: AccountStatus.activo,
+      );
+    }
+
+    if (email == 'bloqueado@test.com') {
+      return Usuario(
+        uid: 'u4',
+        nombre: 'Usuario Bloqueado',
+        email: email,
+        rol: UserRole.investigador,
+        estado: AccountStatus.bloqueado,
+      );
+    }
+
+    if (email == 'pendiente@test.com') {
+      return Usuario(
+        uid: 'u5',
+        nombre: 'Usuario Pendiente',
+        email: email,
+        rol: UserRole.investigador,
+        estado: AccountStatus.pendienteAprobacion,
+>>>>>>> 70233f51266470e69ae422e749a14accd5b9113f
       );
       await guardarPerfil(nuevoPerfil);
       return nuevoPerfil;

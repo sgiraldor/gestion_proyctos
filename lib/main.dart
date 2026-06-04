@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+<<<<<<< HEAD
 import 'package:flutter/material.dart';
 
 import 'enums/account_status.dart';
@@ -6,6 +7,9 @@ import 'firebase_options.dart';
 import 'models/usuario.dart';
 import 'pages/blocked_page.dart';
 import 'pages/home_page.dart';
+=======
+import 'firebase_options.dart';
+>>>>>>> 70233f51266470e69ae422e749a14accd5b9113f
 import 'pages/login_page.dart';
 import 'pages/pending_page.dart';
 import 'services/auth_service.dart';

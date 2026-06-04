@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../enums/project_status.dart';
 import '../models/integrante.dart';
+<<<<<<< HEAD
 import '../models/proyecto.dart';
 import '../models/usuario.dart';
 import '../services/firestore_service.dart';
 import '../services/proyecto_service.dart';
 import '../utils/app_theme.dart';
+=======
+import 'entregables_page.dart';
+>>>>>>> 70233f51266470e69ae422e749a14accd5b9113f
 import 'avances_page.dart';
 import 'entregables_page.dart';
 import 'revisiones_page.dart';
